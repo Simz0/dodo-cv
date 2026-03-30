@@ -272,12 +272,18 @@ def detect_people_in_roi(frame: np.ndarray, roi: tuple[int, int, int, int], mode
     return is_occupied, people_boxes
 
 
-def background_subtraction(video_path: str, roi: tuple[int, int, int, int]) -> None:
+def background_subtraction(video_path: str, roi: tuple[int, int, int, int], output_path: str = 'output.mp4') -> None:
     """
     Обработка видео с детекцией людей через YOLO.
     """
     cap = cv2.VideoCapture(video_path)
     fps = cap.get(cv2.CAP_PROP_FPS) or 30.0
+    width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
+    height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+
+    # Инициализация VideoWriter для записи выходного видео
+    fourcc = cv2.VideoWriter_fourcc(*'mp4v')
+    out = cv2.VideoWriter(output_path, fourcc, fps, (width, height))
 
     # Загружаем YOLOv8 nano (быстрая версия)
     print("Загрузка YOLO модели...")
@@ -345,6 +351,9 @@ def background_subtraction(video_path: str, roi: tuple[int, int, int, int]) -> N
         cv2.putText(frame, f'Frame: {frame_count}', (10, 30),
                     cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 255), 2)
 
+        # Записываем кадр в выходное видео
+        out.write(frame)
+
         # Показываем окна
         cv2.imshow('ROI View', roi_frame)
         cv2.imshow('Table State', frame)
@@ -359,15 +368,18 @@ def background_subtraction(video_path: str, roi: tuple[int, int, int, int]) -> N
             break
         if cv2.getWindowProperty('Table State', cv2.WND_PROP_VISIBLE) < 1:
             break
-    
+
     # Финализируем трекер, чтобы закрыть активные сессии
     tracker.finalize()
 
     # Печатаем статистику после обработки видео
     tracker.print_analytics_report()
 
+    # Освобождаем ресурсы
     cap.release()
+    out.release()
     cv2.destroyAllWindows()
+    print(f"\nВыходное видео сохранено: {output_path}")
 
 
 def parse_args() -> argparse.Namespace:
@@ -381,6 +393,12 @@ def parse_args() -> argparse.Namespace:
         required=True,
         help='Путь к видеофайлу'
     )
+    parser.add_argument(
+        '--output',
+        type=str,
+        default='output.mp4',
+        help='Путь к выходному видеофайлу (по умолчанию output.mp4)'
+    )
     return parser.parse_args()
 
 
@@ -391,7 +409,7 @@ if __name__ == "__main__":
     try:
         roi = select_table_roi(args.video, window_name)
         print(f"Координаты ROI: {roi}")
-        background_subtraction(args.video, roi)
+        background_subtraction(args.video, roi, args.output)
 
     except ValueError as e:
         print(e)
