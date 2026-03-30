@@ -20,7 +20,7 @@ pip install -r requirements.txt
 ## 🎬 Запуск
 
 ```bash
-python main.py --video <путь_к_видео>
+python main.py --video <путь_к_видео> --output <"название_выходного_файла.mp4">
 ```
 
 **Пример:**
